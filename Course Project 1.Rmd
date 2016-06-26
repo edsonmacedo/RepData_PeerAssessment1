@@ -1,0 +1,154 @@
+---
+title: "Course Project 1"
+author: "Edson Macedo"
+date: "24 de junho de 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading the Required Packages
+
+```{r packages, results = 'hide', warning=FALSE}
+
+library('dplyr')
+library('ggplot2')
+library('lubridate')
+library('xtable')
+
+```
+
+## Loading and Preprocessing the Data
+
+```{r loading}
+
+activity <- read.csv('activity.csv')
+
+```
+
+## What is mean total number of steps taken per day?
+
+1. Calculate the total number of steps taken per day
+
+```{r meanA1}
+
+StepsByDay <- summarize(group_by(activity, date), TotalSteps = sum(steps, na.rm = TRUE))
+
+```
+
+2. Make a histogram of the total number of steps taken each day
+
+```{r meanA2}
+
+qplot(data = StepsByDay, TotalSteps, geom = 'histogram', col = I('black'))
+
+```
+
+3. Calculate and report the mean and median of the total number of steps taken per day
+
+```{r meanA3}
+
+mean(StepsByDay$TotalSteps)
+median(StepsByDay$TotalSteps)
+
+```
+
+## What is the average daily activity pattern?
+
+
+1.Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r avarageA1}
+
+StepsByInterval <- summarize(group_by(activity, interval), StepsMean = mean(steps, na.rm = TRUE))
+
+qplot(data = StepsByInterval, x = interval, y = StepsMean, geom = 'line')
+
+```
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r avarageA2}
+
+arrange(.data = StepsByInterval, desc(StepsMean))[1,]
+
+```
+
+## Imputing missing values
+
+1. Calculate and report the total number of missing values in the dataset
+
+```{r missing1}
+
+sum(is.na(activity$steps))
+
+```
+
+2. Devise a strategy for filling in all of the missing values in the dataset.
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+```{r missing2}
+
+activity_NoNa <- activity
+
+for (row in c(1:17568)){
+  if (is.na(activity_NoNa$steps[row]) == TRUE)
+    activity_NoNa$steps[row] <- mean(filter(activity_NoNa, interval == activity_NoNa$interval[row])$steps, na.rm = TRUE)
+}
+
+```
+
+4a. Make a histogram of the total number of steps taken each day.
+
+```{r missing4a}
+
+StepsByDay_NoNa <- summarize(group_by(activity_NoNa, date), TotalSteps = sum(steps, na.rm = TRUE))
+
+qplot(data = StepsByDay_NoNa, TotalSteps, geom = 'histogram', col = I('black'))
+
+```
+
+4b. Calculate and report the mean and median total number of steps taken per day.
+
+```{r missing4b}
+
+mean(StepsByDay_NoNa$TotalSteps)
+median(StepsByDay_NoNa$TotalSteps)
+
+```
+
+4c. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+```{r missing4c}
+
+Comparison <- data.frame(Mean = c(mean(StepsByDay$TotalSteps), mean(StepsByDay_NoNa$TotalSteps)), 
+                         Median = c(median(StepsByDay$TotalSteps), median(StepsByDay_NoNa$TotalSteps)), 
+                         row.names = c('With NAs', 'Without NAs'))
+
+print(xtable(Comparison), type = 'html')
+
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{r weekdays1}
+
+activity_NoNa <- mutate(activity_NoNa, DayType = ifelse(wday(activity_NoNa$date) == 7 | wday(activity_NoNa$date) == 1,
+                                                        'weekend', 'weekday'))
+
+StepsByInterval_NoNa <- summarize(group_by(activity_NoNa, interval, DayType), StepsMean = mean(steps, na.rm = TRUE))
+
+```
+
+2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+```{r weekdays2}
+
+qplot(data = StepsByInterval_NoNa, x = interval, y = StepsMean, geom = 'line', facets = DayType~.)
+
+```
